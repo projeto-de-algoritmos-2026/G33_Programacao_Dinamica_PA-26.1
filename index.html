@@ -1,0 +1,81 @@
+<script type="module">
+  import { levenshtein, calculateSimilarity } from './dp.js';
+
+  window.renderDpTable = function(s1, s2) {
+    const matrix = levenshtein(s1, s2);
+    let html = '<table><tr><th></th><th>ε</th>';
+    
+    for (let char of s2) html += `<th>${char}</th>`;
+    html += '</tr>';
+    
+    for (let i = 0; i <= s1.length; i++) {
+      html += `<tr><th>${i === 0 ? 'ε' : s1[i-1]}</th>`;
+      for (let j = 0; j <= s2.length; j++) {
+        html += `<td>${matrix[i][j]}</td>`;
+      }
+      html += '</tr>';
+    }
+    html += '</table>';
+    
+    document.getElementById('dp-table-container').innerHTML = html;
+    document.getElementById('dp-view').style.display = 'block';
+  };
+
+  function analyzeText() {
+    const dictText = document.getElementById('dict').value.toLowerCase();
+    const dictionary = new Set(dictText.split(/\s+/).filter(w => w.length > 0));
+    
+    const editorText = document.getElementById('editor').value.toLowerCase();
+    const words = editorText.match(/\b[a-záàâãéèêíïóôõöúçñ]+\b/gi) || [];
+    
+    const suggestionsDiv = document.getElementById('suggestions');
+    suggestionsDiv.innerHTML = '';
+    
+    let hasErrors = false;
+    const uniqueWords = [...new Set(words)];
+
+    uniqueWords.forEach(word => {
+      if (!dictionary.has(word) && dictionary.size > 0) {
+        hasErrors = true;
+        let bestMatch = '';
+        let bestSim = 0;
+        
+        dictionary.forEach(dictWord => {
+          const matrix = levenshtein(word, dictWord);
+          const distance = matrix[word.length][dictWord.length];
+          const sim = parseFloat(calculateSimilarity(distance, word, dictWord));
+          
+          if (sim > bestSim) {
+            bestSim = sim;
+            bestMatch = dictWord;
+          }
+        });
+
+        const item = document.createElement('div');
+        item.className = 'suggestion-item';
+        item.innerHTML = `
+          <strong>${word}</strong> ➔ <em>${bestMatch}</em> (${bestSim}% de similaridade) 
+          <button onclick="window.renderDpTable('${word}', '${bestMatch}')">Ver Tabela DP</button>
+        `;
+        suggestionsDiv.appendChild(item);
+      }
+    });
+
+    if (!hasErrors) {
+      suggestionsDiv.innerHTML = 'Nenhuma palavra incorreta detectada.';
+    }
+  }
+
+  let timeout = null;
+  document.getElementById('editor').addEventListener('input', () => {
+    clearTimeout(timeout);
+    timeout = setTimeout(analyzeText, 500);
+  });
+  
+  document.getElementById('dict').addEventListener('input', analyzeText);
+
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    const isDark = document.body.getAttribute('data-theme') === 'dark';
+    document.body.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  });
+</script>
