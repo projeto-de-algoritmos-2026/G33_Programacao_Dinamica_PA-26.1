@@ -20,18 +20,18 @@ O projeto consiste na utilização de Programação Dinâmica(PD) especificament
 
 ## Screenshots
 
-Cubo do cube solve 2x2x2:
+Comparação de palavras:
 
-![Imagem atrás cubo mágico](Imagens/cubo-2.png)
+![text-area](Imagens/image1.png)
 
-Referencial:
+Matriz de Alinhamento de Sequência: 
 
-![Mapeamento do cubo](Imagens/coordenadas.png)
+![Mapeamento do cubo](Imagens/image2.png)
 
 
-Camadas:
+Find Solution: 
 
-![Camadas do cubo](Imagens/camadas.png)
+![Camadas do cubo](Imagens/image3.png)
 
 
 ## Clone o repositório  
@@ -42,34 +42,10 @@ Camadas:
 
 ### Pre-requisitos
 - Ter um navegador(Google Chrome, Firefox, Opera, etc) instalado.
-- Acesso a Internet 
-- Mouse, Monitor e Teclado 
-
+- Acesso a Internet
 
 ## Uso
  - Acesse o link: https://projeto-de-algoritmos-2026.github.io/G33_Programacao_Dinamica_PA-26.1/
- - Digite a primeria palavra text-box dicionário 
- - Digite a segunda no outro text-box 
+ - Digite a primeria palavra text-area dicionário 
+ - Digite a segunda no outro text-area
  - Clique em matriz 
-
-Embaralhe o cubo no cube solver.
-
-![Cubo embaralhado](Imagens/embaralhado.png)
-
-![Instrucoes](Imagens/instrucoes.png)
-
-![Instrucoes](Imagens/order.png)
-
-Sincronize com a peça fixada(GRY) e mova de acordo com as orientações dadas. 
-
-Ex: 
-
-![Sync com eixo](Imagens/step1.png)
-
-Passo 1(de acordo com as orientações):
-
-![Passo 1](Imagens/step2.png)
-
-Passo 2(de acordo com as orientações):
-
-![Passo 2](Imagens/step3.png)
