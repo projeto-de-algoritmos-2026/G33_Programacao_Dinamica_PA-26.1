@@ -47,9 +47,6 @@
             color: var(--muted);
             cursor: pointer;
             padding: 5px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
         button:hover {
@@ -58,6 +55,19 @@
 
         svg {
             pointer-events: none;
+        }
+
+        /* Controle do tema nativo via CSS */
+        #icon-moon {
+            display: none;
+        }
+
+        [data-theme="light"] #icon-sun {
+            display: none;
+        }
+
+        [data-theme="light"] #icon-moon {
+            display: block;
         }
 
         .grid {
@@ -83,9 +93,8 @@
             padding: 15px;
             outline: none;
             resize: vertical;
-            font-family: inherit;
+            font: inherit;
             font-size: 1.5rem;
-            line-height: 1.5;
             box-sizing: border-box;
         }
 
@@ -98,23 +107,18 @@
         #editor,
         #backdrop {
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            width: 100%;
-            height: 100%;
-            margin: 0;
+            inset: 0;
             padding: 15px;
             border: 1px solid var(--border);
             border-radius: 4px;
             box-sizing: border-box;
-            font-family: inherit;
+            font: inherit;
             font-size: 1.5rem;
             line-height: 2.5;
             white-space: pre-wrap;
             word-break: break-word;
             overflow-y: auto;
+            margin: 0;
         }
 
         #editor {
@@ -145,8 +149,8 @@
             top: 1.3em;
             font-size: 0.7rem;
             color: var(--muted);
-            pointer-events: none;
             white-space: nowrap;
+            pointer-events: none;
         }
 
         #results,
@@ -199,29 +203,49 @@
             color: var(--txt);
             font-weight: normal;
         }
+
+        .path-cell {
+            background-color: var(--txt);
+            color: var(--bg);
+            font-weight: bold;
+        }
+
+        .ops-container {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px dashed var(--border);
+        }
+
+        .ops-container h4 {
+            margin: 0 0 10px 0;
+            color: var(--txt);
+            font-weight: normal;
+        }
+
+        .ops-list {
+            margin: 0;
+            padding-left: 20px;
+            color: var(--muted);
+            font-size: 1rem;
+        }
     </style>
 </head>
 
 <body>
 
     <header>
-        <span>editor / dp</span>
+        <span>Corretor Automático</span>
         <button id="theme-toggle" aria-label="Alternar tema">
             <svg id="icon-moon" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2"
-                fill="none" style="display: none;">
+                fill="none">
                 <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
             </svg>
             <svg id="icon-sun" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2"
                 fill="none">
                 <circle cx="12" cy="12" r="5"></circle>
-                <line x1="12" y1="1" x2="12" y2="3"></line>
-                <line x1="12" y1="21" x2="12" y2="23"></line>
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                <line x1="1" y1="12" x2="3" y2="12"></line>
-                <line x1="21" y1="12" x2="23" y2="12"></line>
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                <path
+                    d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42">
+                </path>
             </svg>
         </button>
     </header>
@@ -251,154 +275,95 @@
     </div>
 
     <script>
-        function levenshtein(s1, s2) {
-            const matrix = [];
-            for (let i = 0; i <= s1.length; i++) matrix[i] = [i];
-            for (let j = 0; j <= s2.length; j++) matrix[0][j] = j;
+        const $ = id => document.getElementById(id);
+        const [dict, editor, backdrop, sug, dpView, dpContainer, themeBtn] =
+            ['dict', 'editor', 'backdrop', 'suggestions', 'dp-view', 'dp-table-container', 'theme-toggle'].map($);
 
-            for (let i = 1; i <= s1.length; i++) {
-                for (let j = 1; j <= s2.length; j++) {
-                    if (s1[i - 1] === s2[j - 1]) {
-                        matrix[i][j] = matrix[i - 1][j - 1];
-                    } else {
-                        matrix[i][j] = Math.min(
-                            matrix[i - 1][j - 1] + 1,
-                            matrix[i][j - 1] + 1,
-                            matrix[i - 1][j] + 1
-                        );
-                    }
+        function levenshtein(a, b) {
+            const m = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+            for (let j = 0; j <= b.length; j++) m[0][j] = j;
+            for (let i = 1; i <= a.length; i++) {
+                for (let j = 1; j <= b.length; j++) {
+                    m[i][j] = a[i - 1] === b[j - 1] ? m[i - 1][j - 1] : Math.min(m[i - 1][j - 1], m[i][j - 1], m[i - 1][j]) + 1;
                 }
             }
-            return matrix;
+            return m;
         }
 
-        function calculateSimilarity(distance, s1, s2) {
-            const maxLen = Math.max(s1.length, s2.length);
-            if (maxLen === 0) return 100;
-            return ((1 - distance / maxLen) * 100).toFixed(2);
-        }
-
-        window.renderDpTable = function (s1, s2) {
-            const matrix = levenshtein(s1, s2);
-            let html = '<table><tr><th></th><th>ε</th>';
-            for (let char of s2) html += `<th>${char}</th>`;
-            html += '</tr>';
-            for (let i = 0; i <= s1.length; i++) {
-                html += `<tr><th>${i === 0 ? 'ε' : s1[i - 1]}</th>`;
-                for (let j = 0; j <= s2.length; j++) {
-                    html += `<td>${matrix[i][j]}</td>`;
-                }
-                html += '</tr>';
+        function getTraceback(m, a, b) {
+            let i = a.length, j = b.length, path = new Set([`${i},${j}`]), ops = [];
+            while (i > 0 || j > 0) {
+                if (i > 0 && j > 0 && a[i - 1] === b[j - 1]) { ops.push(`Manter '${a[--i]}'`); j--; }
+                else if (i > 0 && j > 0 && m[i][j] === m[i - 1][j - 1] + 1) ops.push(`Substituir '${a[--i]}' por '${b[--j]}'`);
+                else if (i > 0 && m[i][j] === m[i - 1][j] + 1) ops.push(`Deletar '${a[--i]}'`);
+                else ops.push(`Inserir '${b[--j]}'`);
+                path.add(`${i},${j}`);
             }
-            html += '</table>';
-            document.getElementById('dp-table-container').innerHTML = html;
-            document.getElementById('dp-view').style.display = 'block';
+            return { path, ops: ops.reverse() };
+        }
+
+        const calcSim = (d, max) => max ? ((1 - d / max) * 100).toFixed(2) : 100;
+
+        window.renderDpTable = (a, b) => {
+            const m = levenshtein(a, b), { path, ops } = getTraceback(m, a, b);
+            let html = `<table><tr><th></th><th>ε</th>${[...b].map(c => `<th>${c}</th>`).join('')}</tr>`;
+
+            for (let i = 0; i <= a.length; i++) {
+                html += `<tr><th>${i ? a[i - 1] : 'ε'}</th>` +
+                    m[i].map((v, j) => `<td${path.has(`${i},${j}`) ? ' class="path-cell"' : ''}>${v}</td>`).join('') + `</tr>`;
+            }
+
+            dpContainer.innerHTML = html + `</table>
+                <div class="ops-container"><h4>caminho ótimo:</h4><ul class="ops-list">
+                ${ops.map(o => `<li>${o}</li>`).join('')}</ul></div>`;
+            dpView.style.display = 'block';
         };
 
-        const errorCache = {};
+        let errCache = {}, timeout;
 
         function analyzeText() {
-            const dictEl = document.getElementById('dict');
-            const editorEl = document.getElementById('editor');
-            const backdropEl = document.getElementById('backdrop');
-            const suggestionsDiv = document.getElementById('suggestions');
-            if (!dictEl || !editorEl || !backdropEl || !suggestionsDiv) return;
+            const dictSet = new Set(dict.value.toLowerCase().match(/\S+/g) || []);
+            const edTxt = editor.value, words = edTxt.match(/\b[a-záàâãéèêíïóôõöúçñ]+\b/gi) || [];
+            const errs = {};
 
-            const dictText = dictEl.value.toLowerCase();
-            const dictionary = new Set(dictText.split(/\s+/).filter(w => w.length > 0));
-            const editorText = editorEl.value;
-            const words = editorText.match(/\b[a-záàâãéèêíïóôõöúçñ]+\b/gi) || [];
-
-            const uniqueWords = [...new Set(words.map(w => w.toLowerCase()))];
-            const currentErrors = {};
-
-            uniqueWords.forEach(word => {
-                if (!dictionary.has(word) && dictionary.size > 0) {
-                    if (!errorCache[word]) {
-                        let bestMatch = '';
-                        let bestSim = 0;
-                        dictionary.forEach(dictWord => {
-                            const matrix = levenshtein(word, dictWord);
-                            const distance = matrix[word.length][dictWord.length];
-                            const sim = parseFloat(calculateSimilarity(distance, word, dictWord));
-                            if (sim > bestSim) { bestSim = sim; bestMatch = dictWord; }
-                        });
-                        errorCache[word] = { bestMatch, bestSim };
+            if (dictSet.size) {
+                [...new Set(words.map(w => w.toLowerCase()))].forEach(w => {
+                    if (!dictSet.has(w)) {
+                        if (!errCache[w]) {
+                            let bestMatch = '', bestSim = -1;
+                            dictSet.forEach(dw => {
+                                const sim = +calcSim(levenshtein(w, dw)[w.length][dw.length], Math.max(w.length, dw.length));
+                                if (sim > bestSim) [bestSim, bestMatch] = [sim, dw];
+                            });
+                            errCache[w] = { bestMatch, bestSim };
+                        }
+                        errs[w] = errCache[w];
                     }
-                    currentErrors[word] = errorCache[word];
-                }
-            });
-
-            let processedHtml = editorText
-                .replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' }[m]))
-                .replace(/\b[a-záàâãéèêíïóôõöúçñ]+\b/gi, match => {
-                    const lowerMatch = match.toLowerCase();
-                    if (currentErrors[lowerMatch]) {
-                        return `<span class="err-inline" data-sug="${currentErrors[lowerMatch].bestMatch}">${match}</span>`;
-                    }
-                    return match;
                 });
+            }
 
-            if (editorText.endsWith('\n')) processedHtml += ' ';
-            backdropEl.innerHTML = processedHtml;
+            backdrop.innerHTML = edTxt
+                .replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' }[m]))
+                .replace(/\b[a-záàâãéèêíïóôõöúçñ]+\b/gi, m => errs[m.toLowerCase()]
+                    ? `<span class="err-inline" data-sug="${errs[m.toLowerCase()].bestMatch}">${m}</span>` : m)
+                + (edTxt.endsWith('\n') ? ' ' : '');
 
-            suggestionsDiv.innerHTML = '';
-            Object.keys(currentErrors).forEach(errWord => {
-                const { bestMatch, bestSim } = currentErrors[errWord];
-                const item = document.createElement('div');
-                item.className = 'correction-line';
-                item.innerHTML = `
-        <span class="err-word">${errWord}</span>
-        <span class="sug-word">${bestMatch}</span>
-        <span class="meta">${bestSim}%</span>
-        <button onclick="window.renderDpTable('${errWord}', '${bestMatch}')">[matriz]</button>
-      `;
-                suggestionsDiv.appendChild(item);
-            });
+            sug.innerHTML = Object.entries(errs).map(([ew, { bestMatch, bestSim }]) => `
+                <div class="correction-line">
+                    <span class="err-word">${ew}</span><span class="sug-word">${bestMatch}</span><span class="meta">${bestSim}%</span>
+                    <button onclick="window.renderDpTable('${ew}', '${bestMatch}')">[matriz]</button>
+                </div>
+            `).join('');
         }
 
-        const dictEl = document.getElementById('dict');
-        const editorEl = document.getElementById('editor');
-        const backdropEl = document.getElementById('backdrop');
-        const themeToggleEl = document.getElementById('theme-toggle');
+        dict.addEventListener('input', () => { errCache = {}; analyzeText(); });
+        editor.addEventListener('input', () => { clearTimeout(timeout); timeout = setTimeout(analyzeText, 100); });
+        editor.addEventListener('scroll', () => backdrop.scrollTop = editor.scrollTop);
 
-        if (dictEl) {
-            dictEl.addEventListener('input', () => {
-                for (const key in errorCache) delete errorCache[key];
-                analyzeText();
-            });
-        }
-
-        if (editorEl) {
-            let timeout = null;
-            editorEl.addEventListener('input', () => {
-                clearTimeout(timeout);
-                timeout = setTimeout(analyzeText, 100);
-            });
-            editorEl.addEventListener('scroll', () => {
-                backdropEl.scrollTop = editorEl.scrollTop;
-            });
-        }
-
-        if (themeToggleEl) {
-            const iconSun = document.getElementById('icon-sun');
-            const iconMoon = document.getElementById('icon-moon');
-
-            themeToggleEl.addEventListener('click', () => {
-                const htmlEl = document.documentElement;
-                const isDark = htmlEl.getAttribute('data-theme') === 'dark';
-
-                if (isDark) {
-                    htmlEl.setAttribute('data-theme', 'light');
-                    iconSun.style.display = 'none';
-                    iconMoon.style.display = 'block';
-                } else {
-                    htmlEl.setAttribute('data-theme', 'dark');
-                    iconSun.style.display = 'block';
-                    iconMoon.style.display = 'none';
-                }
-            });
-        }
+        themeBtn.addEventListener('click', () => {
+            const root = document.documentElement;
+            root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+        });
     </script>
 </body>
 
