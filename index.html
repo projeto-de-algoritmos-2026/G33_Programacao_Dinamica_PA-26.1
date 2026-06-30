@@ -1,149 +1,405 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="dark">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Editor com Corretor DP</title>
-<style>
-  :root { --bg: #ffffff; --text: #1a1a1a; --border: #ccc; --bg-panel: #f9f9f9; --highlight: #e0e0e0; }
-  [data-theme="dark"] { --bg: #121212; --text: #e0e0e0; --border: #444; --bg-panel: #1e1e1e; --highlight: #333; }
-  body { background-color: var(--bg); color: var(--text); font-family: system-ui, sans-serif; margin: 0; padding: 20px; transition: background-color 0.3s, color 0.3s; }
-  header { display: flex; justify-content: space-between; margin-bottom: 20px; }
-  .container { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
-  textarea { width: 100%; height: 300px; background-color: var(--bg-panel); color: var(--text); border: 1px solid var(--border); padding: 10px; resize: vertical; box-sizing: border-box; }
-  #results, #dp-view { margin-top: 20px; padding: 15px; background-color: var(--bg-panel); border: 1px solid var(--border); }
-  table { border-collapse: collapse; margin-top: 10px; }
-  th, td { border: 1px solid var(--border); padding: 5px 10px; text-align: center; }
-  th { background-color: var(--highlight); }
-  button { background-color: var(--highlight); color: var(--text); border: 1px solid var(--border); padding: 5px 10px; cursor: pointer; }
-  .suggestion-item { margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor Simplista</title>
+    <style>
+        :root,
+        [data-theme="dark"] {
+            --bg: #323437;
+            --txt: #d1d0c5;
+            --muted: #646669;
+            --err: #ca4754;
+            --border: #4a4c50;
+        }
+
+        [data-theme="light"] {
+            --bg: #f5f5f5;
+            --txt: #333333;
+            --muted: #999999;
+            --err: #d32f2f;
+            --border: #cccccc;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--txt);
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            padding: 5vh 10vw;
+            font-size: 1.2rem;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--muted);
+            margin-bottom: 40px;
+        }
+
+        button {
+            background: none;
+            border: none;
+            color: var(--muted);
+            cursor: pointer;
+            padding: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        button:hover {
+            color: var(--txt);
+        }
+
+        svg {
+            pointer-events: none;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+
+        h3 {
+            color: var(--muted);
+            font-weight: normal;
+            font-size: 1rem;
+            margin: 0 0 10px 0;
+        }
+
+        #dict {
+            width: 100%;
+            height: 40vh;
+            background: transparent;
+            color: var(--txt);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 15px;
+            outline: none;
+            resize: vertical;
+            font-family: inherit;
+            font-size: 1.5rem;
+            line-height: 1.5;
+            box-sizing: border-box;
+        }
+
+        .editor-wrapper {
+            position: relative;
+            width: 100%;
+            height: 40vh;
+        }
+
+        #editor,
+        #backdrop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 15px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-family: inherit;
+            font-size: 1.5rem;
+            line-height: 2.5;
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow-y: auto;
+        }
+
+        #editor {
+            color: transparent;
+            background: transparent;
+            caret-color: var(--txt);
+            z-index: 2;
+            outline: none;
+            resize: none;
+        }
+
+        #backdrop {
+            color: var(--txt);
+            background: transparent;
+            z-index: 1;
+            border-color: transparent;
+        }
+
+        .err-inline {
+            position: relative;
+            color: var(--err);
+        }
+
+        .err-inline::after {
+            content: attr(data-sug);
+            position: absolute;
+            left: 0;
+            top: 1.3em;
+            font-size: 0.7rem;
+            color: var(--muted);
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        #results,
+        #dp-view {
+            margin-top: 40px;
+        }
+
+        .correction-line {
+            display: flex;
+            gap: 15px;
+            align-items: baseline;
+            margin-bottom: 10px;
+            padding: 5px 0;
+            border-bottom: 1px dashed var(--border);
+        }
+
+        .err-word {
+            color: var(--err);
+            text-decoration: line-through;
+        }
+
+        .sug-word {
+            color: var(--txt);
+        }
+
+        .meta {
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        #dp-table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            border-collapse: collapse;
+            margin-top: 15px;
+            width: 100%;
+        }
+
+        th,
+        td {
+            border: 1px solid var(--border);
+            padding: 5px 15px;
+            text-align: center;
+            color: var(--muted);
+        }
+
+        th {
+            color: var(--txt);
+            font-weight: normal;
+        }
+    </style>
 </head>
+
 <body>
 
-<header>
-  <h2>Editor Corretor</h2>
-  <button id="theme-toggle">Alternar Tema</button>
-</header>
+    <header>
+        <span>editor / dp</span>
+        <button id="theme-toggle" aria-label="Alternar tema">
+            <svg id="icon-moon" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2"
+                fill="none" style="display: none;">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+            <svg id="icon-sun" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2"
+                fill="none">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+        </button>
+    </header>
 
-<div class="container">
-  <div>
-    <h3>Dicionário</h3>
-    <textarea id="dict" placeholder="Insira as palavras aqui, separadas por quebra de linha."></textarea>
-  </div>
-  <div>
-    <h3>Editor</h3>
-    <textarea id="editor" placeholder="Digite seu texto..."></textarea>
-  </div>
-</div>
+    <div class="grid">
+        <div>
+            <h3>dicionário</h3>
+            <textarea id="dict" placeholder="palavras..."></textarea>
+        </div>
+        <div>
+            <h3>texto</h3>
+            <div class="editor-wrapper">
+                <div id="backdrop"></div>
+                <textarea id="editor" spellcheck="false" placeholder="digite..."></textarea>
+            </div>
+        </div>
+    </div>
 
-<div id="results">
-  <h3>Análise de Similaridade</h3>
-  <div id="suggestions">Nenhuma palavra incorreta detectada.</div>
-</div>
+    <div id="results">
+        <div id="suggestions"></div>
+    </div>
 
-<div id="dp-view" style="display: none;">
-  <h3>Tabela DP (Distância de Levenshtein)</h3>
-  <button onclick="document.getElementById('dp-view').style.display='none'">Fechar</button>
-  <div id="dp-table-container"></div>
-</div>
+    <div id="dp-view" style="display: none;">
+        <button onclick="document.getElementById('dp-view').style.display='none'" style="margin-bottom: 10px;">[ fechar
+            matriz ]</button>
+        <div id="dp-table-container"></div>
+    </div>
 
-<script type="module">
-  import { levenshtein, calculateSimilarity } from './dp.js';
+    <script>
+        function levenshtein(s1, s2) {
+            const matrix = [];
+            for (let i = 0; i <= s1.length; i++) matrix[i] = [i];
+            for (let j = 0; j <= s2.length; j++) matrix[0][j] = j;
 
-  window.renderDpTable = function(s1, s2) {
-    const matrix = levenshtein(s1, s2);
-    let html = '<table><tr><th></th><th>ε</th>';
-    
-    for (let char of s2) html += `<th>${char}</th>`;
-    html += '</tr>';
-    
-    for (let i = 0; i <= s1.length; i++) {
-      html += `<tr><th>${i === 0 ? 'ε' : s1[i-1]}</th>`;
-      for (let j = 0; j <= s2.length; j++) {
-        html += `<td>${matrix[i][j]}</td>`;
-      }
-      html += '</tr>';
-    }
-    html += '</table>';
-    
-    document.getElementById('dp-table-container').innerHTML = html;
-    document.getElementById('dp-view').style.display = 'block';
-  };
+            for (let i = 1; i <= s1.length; i++) {
+                for (let j = 1; j <= s2.length; j++) {
+                    if (s1[i - 1] === s2[j - 1]) {
+                        matrix[i][j] = matrix[i - 1][j - 1];
+                    } else {
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j - 1] + 1,
+                            matrix[i][j - 1] + 1,
+                            matrix[i - 1][j] + 1
+                        );
+                    }
+                }
+            }
+            return matrix;
+        }
 
-  function analyzeText() {
-    const dictEl = document.getElementById('dict');
-    const editorEl = document.getElementById('editor');
-    if (!dictEl || !editorEl) return;
+        function calculateSimilarity(distance, s1, s2) {
+            const maxLen = Math.max(s1.length, s2.length);
+            if (maxLen === 0) return 100;
+            return ((1 - distance / maxLen) * 100).toFixed(2);
+        }
 
-    const dictText = dictEl.value.toLowerCase();
-    const dictionary = new Set(dictText.split(/\s+/).filter(w => w.length > 0));
-    
-    const editorText = editorEl.value.toLowerCase();
-    const words = editorText.match(/\b[a-záàâãéèêíïóôõöúçñ]+\b/gi) || [];
-    
-    const suggestionsDiv = document.getElementById('suggestions');
-    if (!suggestionsDiv) return;
+        window.renderDpTable = function (s1, s2) {
+            const matrix = levenshtein(s1, s2);
+            let html = '<table><tr><th></th><th>ε</th>';
+            for (let char of s2) html += `<th>${char}</th>`;
+            html += '</tr>';
+            for (let i = 0; i <= s1.length; i++) {
+                html += `<tr><th>${i === 0 ? 'ε' : s1[i - 1]}</th>`;
+                for (let j = 0; j <= s2.length; j++) {
+                    html += `<td>${matrix[i][j]}</td>`;
+                }
+                html += '</tr>';
+            }
+            html += '</table>';
+            document.getElementById('dp-table-container').innerHTML = html;
+            document.getElementById('dp-view').style.display = 'block';
+        };
 
-    suggestionsDiv.innerHTML = '';
-    
-    let hasErrors = false;
-    const uniqueWords = [...new Set(words)];
+        const errorCache = {};
 
-    uniqueWords.forEach(word => {
-      if (!dictionary.has(word) && dictionary.size > 0) {
-        hasErrors = true;
-        let bestMatch = '';
-        let bestSim = 0;
-        
-        dictionary.forEach(dictWord => {
-          const matrix = levenshtein(word, dictWord);
-          const distance = matrix[word.length][dictWord.length];
-          const sim = parseFloat(calculateSimilarity(distance, word, dictWord));
-          
-          if (sim > bestSim) {
-            bestSim = sim;
-            bestMatch = dictWord;
-          }
-        });
+        function analyzeText() {
+            const dictEl = document.getElementById('dict');
+            const editorEl = document.getElementById('editor');
+            const backdropEl = document.getElementById('backdrop');
+            const suggestionsDiv = document.getElementById('suggestions');
+            if (!dictEl || !editorEl || !backdropEl || !suggestionsDiv) return;
 
-        const item = document.createElement('div');
-        item.className = 'suggestion-item';
-        item.innerHTML = `
-          <strong>${word}</strong> ➔ <em>${bestMatch}</em> (${bestSim}% de similaridade) 
-          <button onclick="window.renderDpTable('${word}', '${bestMatch}')">Ver Tabela DP</button>
-        `;
-        suggestionsDiv.appendChild(item);
-      }
-    });
+            const dictText = dictEl.value.toLowerCase();
+            const dictionary = new Set(dictText.split(/\s+/).filter(w => w.length > 0));
+            const editorText = editorEl.value;
+            const words = editorText.match(/\b[a-záàâãéèêíïóôõöúçñ]+\b/gi) || [];
 
-    if (!hasErrors) {
-      suggestionsDiv.innerHTML = 'Nenhuma palavra incorreta detectada.';
-    }
-  }
+            const uniqueWords = [...new Set(words.map(w => w.toLowerCase()))];
+            const currentErrors = {};
 
-  const dictEl = document.getElementById('dict');
-  const editorEl = document.getElementById('editor');
-  const themeToggleEl = document.getElementById('theme-toggle');
+            uniqueWords.forEach(word => {
+                if (!dictionary.has(word) && dictionary.size > 0) {
+                    if (!errorCache[word]) {
+                        let bestMatch = '';
+                        let bestSim = 0;
+                        dictionary.forEach(dictWord => {
+                            const matrix = levenshtein(word, dictWord);
+                            const distance = matrix[word.length][dictWord.length];
+                            const sim = parseFloat(calculateSimilarity(distance, word, dictWord));
+                            if (sim > bestSim) { bestSim = sim; bestMatch = dictWord; }
+                        });
+                        errorCache[word] = { bestMatch, bestSim };
+                    }
+                    currentErrors[word] = errorCache[word];
+                }
+            });
 
-  if (dictEl) {
-    dictEl.addEventListener('input', analyzeText);
-  }
+            let processedHtml = editorText
+                .replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' }[m]))
+                .replace(/\b[a-záàâãéèêíïóôõöúçñ]+\b/gi, match => {
+                    const lowerMatch = match.toLowerCase();
+                    if (currentErrors[lowerMatch]) {
+                        return `<span class="err-inline" data-sug="${currentErrors[lowerMatch].bestMatch}">${match}</span>`;
+                    }
+                    return match;
+                });
 
-  if (editorEl) {
-    let timeout = null;
-    editorEl.addEventListener('input', () => {
-      clearTimeout(timeout);
-      timeout = setTimeout(analyzeText, 500);
-    });
-  }
+            if (editorText.endsWith('\n')) processedHtml += ' ';
+            backdropEl.innerHTML = processedHtml;
 
-  if (themeToggleEl) {
-    themeToggleEl.addEventListener('click', () => {
-      const isDark = document.body.getAttribute('data-theme') === 'dark';
-      document.body.setAttribute('data-theme', isDark ? 'light' : 'dark');
-    });
-  }
-</script>
+            suggestionsDiv.innerHTML = '';
+            Object.keys(currentErrors).forEach(errWord => {
+                const { bestMatch, bestSim } = currentErrors[errWord];
+                const item = document.createElement('div');
+                item.className = 'correction-line';
+                item.innerHTML = `
+        <span class="err-word">${errWord}</span>
+        <span class="sug-word">${bestMatch}</span>
+        <span class="meta">${bestSim}%</span>
+        <button onclick="window.renderDpTable('${errWord}', '${bestMatch}')">[matriz]</button>
+      `;
+                suggestionsDiv.appendChild(item);
+            });
+        }
+
+        const dictEl = document.getElementById('dict');
+        const editorEl = document.getElementById('editor');
+        const backdropEl = document.getElementById('backdrop');
+        const themeToggleEl = document.getElementById('theme-toggle');
+
+        if (dictEl) {
+            dictEl.addEventListener('input', () => {
+                for (const key in errorCache) delete errorCache[key];
+                analyzeText();
+            });
+        }
+
+        if (editorEl) {
+            let timeout = null;
+            editorEl.addEventListener('input', () => {
+                clearTimeout(timeout);
+                timeout = setTimeout(analyzeText, 100);
+            });
+            editorEl.addEventListener('scroll', () => {
+                backdropEl.scrollTop = editorEl.scrollTop;
+            });
+        }
+
+        if (themeToggleEl) {
+            const iconSun = document.getElementById('icon-sun');
+            const iconMoon = document.getElementById('icon-moon');
+
+            themeToggleEl.addEventListener('click', () => {
+                const htmlEl = document.documentElement;
+                const isDark = htmlEl.getAttribute('data-theme') === 'dark';
+
+                if (isDark) {
+                    htmlEl.setAttribute('data-theme', 'light');
+                    iconSun.style.display = 'none';
+                    iconMoon.style.display = 'block';
+                } else {
+                    htmlEl.setAttribute('data-theme', 'dark');
+                    iconSun.style.display = 'block';
+                    iconMoon.style.display = 'none';
+                }
+            });
+        }
+    </script>
 </body>
+
 </html>
