@@ -1,3 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Editor com Corretor DP</title>
+<style>
+  :root { --bg: #ffffff; --text: #1a1a1a; --border: #ccc; --bg-panel: #f9f9f9; --highlight: #e0e0e0; }
+  [data-theme="dark"] { --bg: #121212; --text: #e0e0e0; --border: #444; --bg-panel: #1e1e1e; --highlight: #333; }
+  body { background-color: var(--bg); color: var(--text); font-family: system-ui, sans-serif; margin: 0; padding: 20px; transition: background-color 0.3s, color 0.3s; }
+  header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+  .container { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
+  textarea { width: 100%; height: 300px; background-color: var(--bg-panel); color: var(--text); border: 1px solid var(--border); padding: 10px; resize: vertical; box-sizing: border-box; }
+  #results, #dp-view { margin-top: 20px; padding: 15px; background-color: var(--bg-panel); border: 1px solid var(--border); }
+  table { border-collapse: collapse; margin-top: 10px; }
+  th, td { border: 1px solid var(--border); padding: 5px 10px; text-align: center; }
+  th { background-color: var(--highlight); }
+  button { background-color: var(--highlight); color: var(--text); border: 1px solid var(--border); padding: 5px 10px; cursor: pointer; }
+  .suggestion-item { margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<header>
+  <h2>Editor Corretor</h2>
+  <button id="theme-toggle">Alternar Tema</button>
+</header>
+
+<div class="container">
+  <div>
+    <h3>Dicionário</h3>
+    <textarea id="dict" placeholder="Insira as palavras aqui, separadas por quebra de linha."></textarea>
+  </div>
+  <div>
+    <h3>Editor</h3>
+    <textarea id="editor" placeholder="Digite seu texto..."></textarea>
+  </div>
+</div>
+
+<div id="results">
+  <h3>Análise de Similaridade</h3>
+  <div id="suggestions">Nenhuma palavra incorreta detectada.</div>
+</div>
+
+<div id="dp-view" style="display: none;">
+  <h3>Tabela DP (Distância de Levenshtein)</h3>
+  <button onclick="document.getElementById('dp-view').style.display='none'">Fechar</button>
+  <div id="dp-table-container"></div>
+</div>
+
 <script type="module">
   import { levenshtein, calculateSimilarity } from './dp.js';
 
@@ -22,13 +72,19 @@
   };
 
   function analyzeText() {
-    const dictText = document.getElementById('dict').value.toLowerCase();
+    const dictEl = document.getElementById('dict');
+    const editorEl = document.getElementById('editor');
+    if (!dictEl || !editorEl) return;
+
+    const dictText = dictEl.value.toLowerCase();
     const dictionary = new Set(dictText.split(/\s+/).filter(w => w.length > 0));
     
-    const editorText = document.getElementById('editor').value.toLowerCase();
+    const editorText = editorEl.value.toLowerCase();
     const words = editorText.match(/\b[a-záàâãéèêíïóôõöúçñ]+\b/gi) || [];
     
     const suggestionsDiv = document.getElementById('suggestions');
+    if (!suggestionsDiv) return;
+
     suggestionsDiv.innerHTML = '';
     
     let hasErrors = false;
@@ -66,16 +122,28 @@
     }
   }
 
-  let timeout = null;
-  document.getElementById('editor').addEventListener('input', () => {
-    clearTimeout(timeout);
-    timeout = setTimeout(analyzeText, 500);
-  });
-  
-  document.getElementById('dict').addEventListener('input', analyzeText);
+  const dictEl = document.getElementById('dict');
+  const editorEl = document.getElementById('editor');
+  const themeToggleEl = document.getElementById('theme-toggle');
 
-  document.getElementById('theme-toggle').addEventListener('click', () => {
-    const isDark = document.body.getAttribute('data-theme') === 'dark';
-    document.body.setAttribute('data-theme', isDark ? 'light' : 'dark');
-  });
+  if (dictEl) {
+    dictEl.addEventListener('input', analyzeText);
+  }
+
+  if (editorEl) {
+    let timeout = null;
+    editorEl.addEventListener('input', () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(analyzeText, 500);
+    });
+  }
+
+  if (themeToggleEl) {
+    themeToggleEl.addEventListener('click', () => {
+      const isDark = document.body.getAttribute('data-theme') === 'dark';
+      document.body.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    });
+  }
 </script>
+</body>
+</html>
