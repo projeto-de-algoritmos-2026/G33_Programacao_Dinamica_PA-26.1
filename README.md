@@ -4,6 +4,10 @@
 
 *Conteúdo da Disciplina*: Programação Dinâmica<br>
 
+## Link do Vídeo
+
+[https://youtu.be/iQr7flCkltE](https://youtu.be/iQr7flCkltE)
+
 ## Alunos
 |Matrícula | Aluno |
 | -- | -- |
@@ -46,6 +50,6 @@ Find Solution:
 
 ## Uso
  - Acesse o link: https://projeto-de-algoritmos-2026.github.io/G33_Programacao_Dinamica_PA-26.1/
- - Digite a primeria palavra text-area dicionário 
+ - Digite a primeira palavra no text-area dicionário 
  - Digite a segunda no outro text-area
  - Clique em matriz 
